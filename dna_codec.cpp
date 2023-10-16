@@ -162,7 +162,21 @@ bool doFileDecode(const string& dnaFileName) {
     	}
 
     	// Parse the file size from the header
-    	size_t originalFileSize = stoi(fileSizeStr);
+    	size_t originalFileSize = 0;
+    	try {
+    	    if (!fileSizeStr.empty() && fileSizeStr.find_first_not_of("0123456789") == string::npos) {
+    	        originalFileSize = stoi(fileSizeStr);
+    	    } else {
+    	        cerr << "Invalid or empty file size in header." << endl;
+    	        return 1;
+    	    }
+    	} catch (const std::invalid_argument& e) {
+    	    cerr << "Invalid file size in header: " << e.what() << endl;
+    	    return 1;
+    	} catch (const std::exception& e) {
+    	    cerr << "An exception occurred: " << e.what() << endl;
+    	    return 1;
+    	}
 
     	// Remove padding
     	fileContent = fileContent.substr(0, originalFileSize);
