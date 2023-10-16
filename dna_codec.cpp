@@ -51,6 +51,8 @@ string binaryToNucleotide(const string &binaryStr);
 string nucleotideToBinary(const string &dnaSeq);
 string messageToBinary(const string &message);
 string binaryToMessage(const string &binaryStr);
+string padBinaryFileContent(const string &fileContent);
+string padStringMessage(const string &message);
 
 // file check
 bool openFile(const string &fileName, string &contents, ios_base::openmode mode);
@@ -90,6 +92,7 @@ int main(int argc, char *argv[]) {
 }
 
 bool doStringEncode(const string& message) {
+	string paddedMessage = padStringMessage(message);
     string binaryMessage = messageToBinary("STRING:" + message);
     string encoded = binaryToNucleotide(binaryMessage);
     string finalEncoded = PROMOTER + encoded + TERMINATOR + MARKER;
@@ -109,10 +112,14 @@ bool doStringDecode(const string& dnaSeq) {
 }
 
 bool doFileEncode(const string& fileName) {
-	ifstream inFile(fileName, ios::binary);
+	ifstream inFile(fileName, ios::binary|ios::ate);
+    inFile.seekg(0, ios::beg);
+
 	string fileContents((istreambuf_iterator<char>(inFile)), istreambuf_iterator<char>());
+    streamsize fileSize = inFile.tellg();
+
 	inFile.close();
-	string header = "FILE:" + fileName + ":";
+	string header = "FILE:" + fileName + ":" + to_string(fileSize) + ":";
 
 	string binaryFileContents = messageToBinary(header + fileContents);
 	string encoded = binaryToNucleotide(binaryFileContents);
@@ -143,31 +150,38 @@ bool doFileDecode(const string& dnaFileName) {
     string decoded = binaryToMessage(decodedBinary);
 
     if (decoded.rfind("FILE:", 0) == 0) {
-        size_t firstColon = decoded.find(":", 5);
-        size_t secondColon = decoded.find(":", firstColon + 1);
-        string originalFileName = decoded.substr(firstColon + 1, secondColon - firstColon - 1);
-        string fileContent = decoded.substr(secondColon + 1);
+    	size_t firstColon = decoded.find(":", 5);
+    	size_t secondColon = decoded.find(":", firstColon + 1);
+    	string originalFileName = decoded.substr(firstColon + 1, secondColon - firstColon - 1);
+    	string fileSizeStr = decoded.substr(secondColon + 1, decoded.find(":", secondColon + 1) - secondColon - 1);
+    	string fileContent = decoded.substr(decoded.find(":", secondColon + 1) + 1);
 
-        // Correcting header misinterpretation
-        if (originalFileName.empty() || fileContent.empty()) {
-            cerr << "Invalid DNA content header or content." << endl;
-            return 1;
-        }
+    	if (originalFileName.empty() || fileContent.empty()) {
+    		cerr << "Invalid DNA content header or content." << endl;
+    		return 1;
+    	}
 
-        ofstream outFile(originalFileName, ios::binary);
-        if (!outFile.is_open()) {
-            cerr << "Could not create output file." << endl;
-            return 1;
-        }
+    	// Parse the file size from the header
+    	size_t originalFileSize = stoi(fileSizeStr);
 
-        outFile << fileContent;
-        outFile.close();
-        cout << "Decoded to file: " << originalFileName << endl;
+    	// Remove padding
+    	fileContent = fileContent.substr(0, originalFileSize);
+
+
+    	ofstream outFile(originalFileName, ios::binary);
+    	if (!outFile.is_open()) {
+    		cerr << "Could not create output file." << endl;
+    		return 1;
+    	}
+
+    	outFile << fileContent;
+    	outFile.close();
+    	cout << "Decoded to file: " << originalFileName << endl;
     } else {
-        cerr << "Invalid DNA content header." << endl;
-        return 1;
+    	cerr << "Invalid DNA content header." << endl;
+    	return 1;
     }
-	return true;
+    return true;
 }
 
 // Convert binary string to DNA sequence
@@ -235,3 +249,18 @@ bool openFile(const string &fileName, string &contents, ios_base::openmode mode)
     return true;
 }
 
+string padStringMessage(const string &message){
+	string paddedMessage = message;
+	while (paddedMessage.length() % 3 != 0) {
+		paddedMessage += ' ';
+	}
+	return paddedMessage;
+}
+
+string padBinaryFileContent(const string &fileContent ) {
+	string paddedFileContent = fileContent;
+	while (paddedFileContent.length() % 3 != 0) {
+		paddedFileContent += '\00';
+	}
+	return paddedFileContent;
+}
