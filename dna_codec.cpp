@@ -149,12 +149,27 @@ bool doFileDecode(const string& dnaFileName) {
     string decodedBinary = nucleotideToBinary(cleanDNA);
     string decoded = binaryToMessage(decodedBinary);
 
+    cout << "Debug: initial decoded = " << decoded.substr(0, 50) << endl;  // First 50 characters
+
+
     if (decoded.rfind("FILE:", 0) == 0) {
     	size_t firstColon = decoded.find(":", 5);
     	size_t secondColon = decoded.find(":", firstColon + 1);
-    	string originalFileName = decoded.substr(firstColon + 1, secondColon - firstColon - 1);
-    	string fileSizeStr = decoded.substr(secondColon + 1, decoded.find(":", secondColon + 1) - secondColon - 1);
-    	string fileContent = decoded.substr(decoded.find(":", secondColon + 1) + 1);
+    	size_t thirdColon = decoded.find(":", secondColon + 1);
+
+    	cout << "Debug: firstColon = " << firstColon << ", secondColon = " << secondColon << endl;
+
+    	string originalFileName = decoded.substr(5, firstColon - 5);
+
+    	cout << "Debug: originalFileName = " << originalFileName << endl;
+
+    	string fileSizeStr = decoded.substr(firstColon + 1, secondColon - firstColon - 1);
+
+    	cout << "Debug: fileSizeStr = " << fileSizeStr << endl;
+
+    	string fileContent = decoded.substr(thirdColon + 1);
+
+    	//cout << "Debug: decoded = " << decoded << endl;
 
     	if (originalFileName.empty() || fileContent.empty()) {
     		cerr << "Invalid DNA content header or content." << endl;
@@ -170,10 +185,10 @@ bool doFileDecode(const string& dnaFileName) {
     	        cerr << "Invalid or empty file size in header." << endl;
     	        return 1;
     	    }
-    	} catch (const std::invalid_argument& e) {
+    	} catch (const invalid_argument& e) {
     	    cerr << "Invalid file size in header: " << e.what() << endl;
     	    return 1;
-    	} catch (const std::exception& e) {
+    	} catch (const exception& e) {
     	    cerr << "An exception occurred: " << e.what() << endl;
     	    return 1;
     	}
